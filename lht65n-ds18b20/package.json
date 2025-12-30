@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node test-single.js && node test-multi.js",
+    "test:single": "node test-single.js",
+    "test:multi": "node test-multi.js"
   },
   "keywords": [],
   "author": "",
