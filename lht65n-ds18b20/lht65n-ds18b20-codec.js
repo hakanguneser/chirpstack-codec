@@ -87,6 +87,30 @@ function parseTimestamp(val) {
 }
 
 /**
+ * Battery helpers
+ */
+function parseBattery(byte, voltage) {
+  if (byte === undefined || byte === null) {
+    return {
+      voltage: voltage ?? null,
+      raw: null,
+      percent: null,
+      label: null
+    };
+  }
+
+  const raw = (byte >> 6) & 0x03;
+  const labels = ["ULTRA LOW", "LOW", "OK", "GOOD"];
+
+  return {
+    voltage: voltage ?? null,
+    raw: raw,
+    percent: Math.round((raw / 3) * 100),
+    label: labels[raw] ?? null
+  };
+}
+
+/**
  * Main Decode Logic
  */
 function Decode(fPort, bytes, variables) {
@@ -108,15 +132,18 @@ function Decode(fPort, bytes, variables) {
     };
 
     // Battery & Status
-    // If Ext is 0x09 (ADC/PT100 special case in byte structure?)
+    let batRaw, batVolt;
     if (extMode === 0x09) {
       // Special case from original code
       measurement.externalTemperatureC = parseFloat((readInt16BE(bytes, 0) / 100).toFixed(2));
-      result.deviceInfo.batteryStatus = bytes[4] >> 6;
+      batRaw = bytes[4];
+      batVolt = null;
     } else {
-      result.deviceInfo.battery = (readUint16BE(bytes, 0) & 0x3FFF) / 1000;
-      result.deviceInfo.batteryStatus = bytes[0] >> 6;
+      batVolt = (readUint16BE(bytes, 0) & 0x3FFF) / 1000;
+      batRaw = bytes[0];
     }
+
+    result.deviceInfo.battery = parseBattery(batRaw, batVolt);
 
     // Internal Sensors (Temp & Humidity)
     if (extMode !== 0x0F) { // 0x0F usually means 'interrupt' or 'no sensor' logic? 
@@ -141,8 +168,7 @@ function Decode(fPort, bytes, variables) {
   if (pollMessageStatus === 1 || retransmissionStatus === 1) {
     if (retransmissionStatus === 1) {
       // In original code, battery info is nulled for retransmission
-      result.deviceInfo.battery = null;
-      result.deviceInfo.batteryStatus = null;
+      result.deviceInfo.battery = parseBattery(null, null);
     }
 
     // Parse chunks of 11 bytes
