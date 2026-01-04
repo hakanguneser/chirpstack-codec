@@ -121,7 +121,7 @@ function Decode(fPort, bytes, variables) {
 
   const result = {
     measurements: [],
-    deviceInfo: {
+    decodedDeviceInfo: {
       model: "LHT65N",
       type: "STATIONARY"
     }
@@ -146,7 +146,7 @@ function Decode(fPort, bytes, variables) {
       batRaw = bytes[0];
     }
 
-    result.deviceInfo.battery = parseBattery(batRaw, batVolt);
+    result.decodedDeviceInfo.battery = parseBattery(batRaw, batVolt);
 
     // Internal Sensors (Temp & Humidity)
     if (extMode !== 0x0F) { // 0x0F usually means 'interrupt' or 'no sensor' logic? 
@@ -171,7 +171,7 @@ function Decode(fPort, bytes, variables) {
   if (pollMessageStatus === 1 || retransmissionStatus === 1) {
     if (retransmissionStatus === 1) {
       // In original code, battery info is nulled for retransmission
-      result.deviceInfo.battery = parseBattery(null, null);
+      result.decodedDeviceInfo.battery = parseBattery(null, null);
     }
 
     // Parse chunks of 11 bytes
