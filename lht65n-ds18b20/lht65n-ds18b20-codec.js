@@ -43,7 +43,7 @@ function readUint32BE(bytes, idx) {
 /**
  * Parses a datalog record
  */
-function parseDatalogRecord(offset, bytes) {
+function parseDatalogRecord(offset, bytes, order) {
   const measurement = {};
   const extMode = bytes[6] & 0x0F;
 
@@ -64,6 +64,7 @@ function parseDatalogRecord(offset, bytes) {
   // Timestamp
   const timeVal = readUint32BE(bytes, offset + 7);
   measurement.measuredAt = parseTimestamp(timeVal);
+  measurement.order = order;
 
   return measurement;
 }
@@ -121,14 +122,16 @@ function Decode(fPort, bytes, variables) {
   const result = {
     measurements: [],
     deviceInfo: {
-      nodeType: "LHT65N" // Default
+      model: "LHT65N",
+      type: "STATIONARY"
     }
   };
 
   // Case 1: Standard Real-time Uplink (No Retransmission, No Poll)
   if (retransmissionStatus === 0 && pollMessageStatus === 0) {
     const measurement = {
-      measuredAt: Date.now()
+      measuredAt: Date.now(),
+      order: 1
     };
 
     // Battery & Status
@@ -174,7 +177,7 @@ function Decode(fPort, bytes, variables) {
     // Parse chunks of 11 bytes
     for (let i = 0; i < bytes.length; i += 11) {
       if (i + 11 > bytes.length) break; // Safety check
-      const record = parseDatalogRecord(i, bytes);
+      const record = parseDatalogRecord(i, bytes, (i / 11) + 1);
       result.measurements.push(record);
     }
 
