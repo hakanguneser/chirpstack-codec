@@ -64,6 +64,7 @@ function parseDatalogRecord(offset, bytes, order) {
   // Timestamp
   const timeVal = readUint32BE(bytes, offset + 7);
   measurement.measuredAt = parseTimestamp(timeVal);
+  measurement.measuredAtDisplay = new Date(measurement.measuredAt)  .toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "medium" });
   measurement.order = order;
 
   return measurement;
@@ -122,15 +123,17 @@ function Decode(fPort, bytes, variables) {
   const result = {
     measurements: [],
     decodedDeviceInfo: {
-      model: "LHT65N",
+      model: "DRAGINO_LHT65N",
       type: "STATIONARY"
     }
   };
 
+  const now = Date.now();
   // Case 1: Standard Real-time Uplink (No Retransmission, No Poll)
   if (retransmissionStatus === 0 && pollMessageStatus === 0) {
     const measurement = {
-      measuredAt: Date.now(),
+      measuredAt: now,
+      measuredAtDisplay: new Date(now).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "medium" }),
       order: 1
     };
 

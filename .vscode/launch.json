@@ -5,7 +5,7 @@
       "type": "node",
       "request": "launch",
       "name": "Debug LHT65N Codec",
-      "program": "${workspaceFolder}/lht65n-ds18b20/test-multi.js",
+      "program": "${workspaceFolder}/lht65n-ds18b20/test-single.js",
       "skipFiles": ["<node_internals>/**"]
     }
   ]
