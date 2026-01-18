@@ -64,7 +64,7 @@ function parseDatalogRecord(offset, bytes, order) {
   // Timestamp
   const timeVal = readUint32BE(bytes, offset + 7);
   measurement.measuredAt = parseTimestamp(timeVal);
-  measurement.measuredAtDisplay = new Date(measurement.measuredAt)  .toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "medium" });
+  measurement.measuredAtDisplay = dateToGMT3(measurement.measuredAt);
   measurement.order = order;
 
   return measurement;
@@ -112,6 +112,16 @@ function parseBattery(byte, voltage) {
   };
 }
 
+function dateToGMT3(ms) {
+  if (ms === undefined || ms === null) {
+    return null;
+  }
+
+  return new Date(ms + (3 * 60 * 60 * 1000))
+    .toISOString()
+    .replace("Z", "+03:00");
+}
+
 /**
  * Main Decode Logic
  */
@@ -133,7 +143,7 @@ function Decode(fPort, bytes, variables) {
   if (retransmissionStatus === 0 && pollMessageStatus === 0) {
     const measurement = {
       measuredAt: now,
-      measuredAtDisplay: new Date(now).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "medium" }),
+      measuredAtDisplay: dateToGMT3(now),
       order: 1
     };
 
