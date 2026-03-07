@@ -20,24 +20,24 @@ function readUint32BE(bytes, idx) {
   return (bytes[idx] << 24) | (bytes[idx + 1] << 16) | (bytes[idx + 2] << 8) | bytes[idx + 3];
 }
 function parseDatalogRecord(offset, bytes, order) {
-  const measurement = {};
+  const thermometerMeasurement = {};
   const extMode = bytes[6] & 0x0F;
   if (bytes[offset] === TEMP_ERROR_VAL_LOW && bytes[offset + 1] === TEMP_ERROR_VAL_HIGH) {
-    measurement.probeTemperatureC = null;
+    thermometerMeasurement.probeTemperatureC = null;
   } else if (extMode === EXT_SENSOR_DS18B20 || extMode === EXT_SENSOR_TMP117 || extMode === EXT_SENSOR_ADC_PT100) {
-    measurement.probeTemperatureC = parseFloat((readInt16BE(bytes, offset) / 100).toFixed(2));
+    thermometerMeasurement.probeTemperatureC = parseFloat((readInt16BE(bytes, offset) / 100).toFixed(2));
   }
 
-  measurement.mainTemperatureC = parseFloat((readInt16BE(bytes, offset + 2) / 100).toFixed(2));
+  thermometerMeasurement.mainTemperatureC = parseFloat((readInt16BE(bytes, offset + 2) / 100).toFixed(2));
 
-  measurement.mainHumidity = parseFloat(((readUint16BE(bytes, offset + 4) & 0xFFF) / 10).toFixed(1));
+  thermometerMeasurement.mainHumidity = parseFloat(((readUint16BE(bytes, offset + 4) & 0xFFF) / 10).toFixed(1));
 
   const timeVal = readUint32BE(bytes, offset + 7);
-  measurement.measuredAt = parseTimestamp(timeVal);
-  measurement.measuredAtDisplay = dateToGMT3(measurement.measuredAt);
-  measurement.order = order;
+  thermometerMeasurement.measuredAt = parseTimestamp(timeVal);
+  thermometerMeasurement.measuredAtDisplay = dateToGMT3(thermometerMeasurement.measuredAt);
+  thermometerMeasurement.order = order;
 
-  return measurement;
+  return thermometerMeasurement;
 }
 function parseTimestamp(val) {
   if (val > 9999999999) {
@@ -86,7 +86,7 @@ function Decode(fPort, bytes, variables) {
   const retransmissionStatus = (bytes[6] >> 7) & 0x01;
 
   const result = {
-    measurements: [],
+    thermometerMeasurements: [],
     decodedDeviceInfo: {
       model: "DRAGINO_LHT65N",
       type: "STATIONARY_THERMOMETER"
@@ -95,7 +95,7 @@ function Decode(fPort, bytes, variables) {
 
   const now = Date.now();
   if (retransmissionStatus === 0 && pollMessageStatus === 0) {
-    const measurement = {
+    const thermometerMeasurement = {
       measuredAt: now,
       measuredAtDisplay: dateToGMT3(now),
       order: 1
@@ -103,7 +103,7 @@ function Decode(fPort, bytes, variables) {
 
     let batRaw, batVolt;
     if (extMode === 0x09) {
-      measurement.probeTemperatureC = parseFloat((readInt16BE(bytes, 0) / 100).toFixed(2));
+      thermometerMeasurement.probeTemperatureC = parseFloat((readInt16BE(bytes, 0) / 100).toFixed(2));
       batRaw = bytes[4];
       batVolt = null;
     } else {
@@ -114,16 +114,16 @@ function Decode(fPort, bytes, variables) {
     result.decodedDeviceInfo.battery = parseBattery(batRaw, batVolt);
 
     if (extMode !== 0x0F) {
-      measurement.mainTemperatureC = parseFloat((readInt16BE(bytes, 2) / 100).toFixed(2));
-      measurement.mainHumidity = parseFloat(((readUint16BE(bytes, 4) & 0xFFF) / 10).toFixed(1));
+      thermometerMeasurement.mainTemperatureC = parseFloat((readInt16BE(bytes, 2) / 100).toFixed(2));
+      thermometerMeasurement.mainHumidity = parseFloat(((readUint16BE(bytes, 4) & 0xFFF) / 10).toFixed(1));
     }
     if (extMode === 0 || (bytes[7] === TEMP_ERROR_VAL_LOW && bytes[8] === TEMP_ERROR_VAL_HIGH)) {
-      measurement.probeTemperatureC = null;
+      thermometerMeasurement.probeTemperatureC = null;
     } else if (extMode === EXT_SENSOR_DS18B20 || extMode === EXT_SENSOR_TMP117) {
-      measurement.probeTemperatureC = parseFloat((readInt16BE(bytes, 7) / 100).toFixed(2));
+      thermometerMeasurement.probeTemperatureC = parseFloat((readInt16BE(bytes, 7) / 100).toFixed(2));
     }
 
-    result.measurements.push(measurement);
+    result.thermometerMeasurements.push(thermometerMeasurement);
     return result;
   }
   if (pollMessageStatus === 1 || retransmissionStatus === 1) {
@@ -133,7 +133,7 @@ function Decode(fPort, bytes, variables) {
     for (let i = 0; i < bytes.length; i += 11) {
       if (i + 11 > bytes.length) break;
       const record = parseDatalogRecord(i, bytes, (i / 11) + 1);
-      result.measurements.push(record);
+      result.thermometerMeasurements.push(record);
     }
     return result;
   }
