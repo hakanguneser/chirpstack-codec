@@ -17,20 +17,21 @@ function readUint16BE(bytes, idx) {
   return (bytes[idx] << 8) | bytes[idx + 1];
 }
 function readUint32BE(bytes, idx) {
-  return (bytes[idx] << 24) | (bytes[idx + 1] << 16) | (bytes[idx + 2] << 8) | bytes[idx + 3];
+  return ((bytes[idx] << 24) | (bytes[idx + 1] << 16) | (bytes[idx + 2] << 8) | bytes[idx + 3]) >>> 0;
 }
 function parseDatalogRecord(offset, bytes, order) {
   const thermometerMeasurement = {};
-  const extMode = bytes[6] & 0x0F;
+  // Each 11-byte datalog record has its own flag/ext byte at offset + 6.
+  const extMode = bytes[offset + 6] & 0x0F;
   if (bytes[offset] === TEMP_ERROR_VAL_LOW && bytes[offset + 1] === TEMP_ERROR_VAL_HIGH) {
     thermometerMeasurement.probeTemperatureC = null;
   } else if (extMode === EXT_SENSOR_DS18B20 || extMode === EXT_SENSOR_TMP117 || extMode === EXT_SENSOR_ADC_PT100) {
     thermometerMeasurement.probeTemperatureC = parseFloat((readInt16BE(bytes, offset) / 100).toFixed(2));
   }
 
-  thermometerMeasurement.mainTemperatureC = parseFloat((readInt16BE(bytes, offset + 2) / 100).toFixed(2));
+  thermometerMeasurement.internalTemperatureC = parseFloat((readInt16BE(bytes, offset + 2) / 100).toFixed(2));
 
-  thermometerMeasurement.mainHumidity = parseFloat(((readUint16BE(bytes, offset + 4) & 0xFFF) / 10).toFixed(1));
+  thermometerMeasurement.internalHumidity = parseFloat(((readUint16BE(bytes, offset + 4) & 0xFFF) / 10).toFixed(1));
 
   const timeVal = readUint32BE(bytes, offset + 7);
   thermometerMeasurement.measuredAt = parseTimestamp(timeVal);
@@ -114,8 +115,8 @@ function Decode(fPort, bytes, variables) {
     result.decodedDeviceInfo.battery = parseBattery(batRaw, batVolt);
 
     if (extMode !== 0x0F) {
-      thermometerMeasurement.mainTemperatureC = parseFloat((readInt16BE(bytes, 2) / 100).toFixed(2));
-      thermometerMeasurement.mainHumidity = parseFloat(((readUint16BE(bytes, 4) & 0xFFF) / 10).toFixed(1));
+      thermometerMeasurement.internalTemperatureC = parseFloat((readInt16BE(bytes, 2) / 100).toFixed(2));
+      thermometerMeasurement.internalHumidity = parseFloat(((readUint16BE(bytes, 4) & 0xFFF) / 10).toFixed(1));
     }
     if (extMode === 0 || (bytes[7] === TEMP_ERROR_VAL_LOW && bytes[8] === TEMP_ERROR_VAL_HIGH)) {
       thermometerMeasurement.probeTemperatureC = null;
@@ -142,6 +143,9 @@ function Decode(fPort, bytes, variables) {
   };
 }
 
-module.exports = {
-  decodeUplink
-};
+// Node.js only (local tests). ChirpStack's JavaScript runtime has no "module".
+if (typeof module !== "undefined") {
+  module.exports = {
+    decodeUplink
+  };
+}
